@@ -10,7 +10,8 @@ ENV TRANSFORMERS_CACHE=/app/.cache/huggingface
 RUN mkdir -p /app/.cache/huggingface
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir --force-reinstall transformers==4.45.2
 
 # Los modelos se cargan al arrancar el worker (handler.py), no en build.
 # Evita timeouts en el build de GitHub (CPU, límite ~30 min).
