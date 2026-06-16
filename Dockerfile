@@ -4,8 +4,10 @@ WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
 ENV TORCH_DEVICE=cuda
-ENV HF_HOME=/runpod-volume/huggingface
-ENV TRANSFORMERS_CACHE=/runpod-volume/huggingface
+ENV HF_HOME=/app/.cache/huggingface
+ENV TRANSFORMERS_CACHE=/app/.cache/huggingface
+
+RUN mkdir -p /app/.cache/huggingface
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

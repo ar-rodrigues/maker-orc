@@ -23,22 +23,19 @@ import urllib.request
 from typing import Any
 
 import runpod
-from marker.config.parser import ConfigParser
-from marker.converters.pdf import PdfConverter
-from marker.models import create_model_dict
-from marker.output import text_from_rendered
-from marker.settings import settings
 
 _models = None
 _models_lock = threading.Lock()
 
 
 def _get_models():
-    """Carga modelos bajo demanda para que el worker registre ping antes."""
+    """Carga modelos bajo demanda en el primer job."""
     global _models
     if _models is None:
         with _models_lock:
             if _models is None:
+                from marker.models import create_model_dict
+
                 print("Cargando modelos de Marker...")
                 _models = create_model_dict()
                 print("Modelos de Marker listos.")
@@ -70,6 +67,8 @@ def _decode_pdf(job_input: dict[str, Any]) -> tuple[str, str]:
 
 
 def _encode_images(images: dict) -> dict[str, str]:
+    from marker.settings import settings
+
     encoded: dict[str, str] = {}
     for key, image in images.items():
         stream = io.BytesIO()
@@ -79,6 +78,10 @@ def _encode_images(images: dict) -> dict[str, str]:
 
 
 def handler(job: dict) -> dict:
+    from marker.config.parser import ConfigParser
+    from marker.converters.pdf import PdfConverter
+    from marker.output import text_from_rendered
+
     job_input = job.get("input", {})
     tmp_path: str | None = None
 
@@ -135,4 +138,5 @@ def handler(job: dict) -> dict:
             os.remove(tmp_path)
 
 
+print("Iniciando worker maker-orc...")
 runpod.serverless.start({"handler": handler})
