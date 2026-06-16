@@ -10,12 +10,12 @@ ENV TRANSFORMERS_CACHE=/app/.cache/huggingface
 RUN mkdir -p /app/.cache/huggingface
 
 COPY requirements.txt .
-# Reemplaza transformers del image base (a veces 5.x) por versión compatible con surya/marker.
-RUN pip uninstall -y transformers 2>/dev/null || true \
-    && pip install --no-cache-dir -r requirements.txt
-
-# Los modelos se cargan al arrancar el worker (handler.py), no en build.
-# Evita timeouts en el build de GitHub (CPU, límite ~30 min).
+# marker-pdf instala torch 2.7; el image base trae torch 2.4 + torchvision viejo.
+# Hay que limpiar y reinstalar torchvision compatible.
+RUN pip uninstall -y transformers torch torchvision 2>/dev/null || true \
+    && pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir torchvision --index-url https://download.pytorch.org/whl/cu124 \
+    && python -c "import torch, torchvision; from transformers import PreTrainedModel; print('deps ok', torch.__version__, torchvision.__version__)"
 
 COPY handler.py .
 
