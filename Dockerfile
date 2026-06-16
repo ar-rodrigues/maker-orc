@@ -10,11 +10,10 @@ ENV TRANSFORMERS_CACHE=/app/.cache/huggingface
 RUN mkdir -p /app/.cache/huggingface
 
 COPY requirements.txt .
-# marker-pdf instala torch 2.7; el image base trae torch 2.4 + torchvision viejo.
-# Hay que limpiar y reinstalar torchvision compatible.
-RUN pip uninstall -y transformers torch torchvision 2>/dev/null || true \
+# Instalar torch+torchvision emparejados ANTES de marker-pdf para evitar conflictos.
+RUN pip uninstall -y transformers torch torchvision triton 2>/dev/null || true \
+    && pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu124 \
     && pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir torchvision --index-url https://download.pytorch.org/whl/cu124 \
     && python -c "import torch, torchvision; from transformers import PreTrainedModel; print('deps ok', torch.__version__, torchvision.__version__)"
 
 COPY handler.py .
