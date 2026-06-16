@@ -17,6 +17,7 @@ import base64
 import io
 import os
 import tempfile
+import threading
 import traceback
 import urllib.request
 from typing import Any
@@ -28,10 +29,20 @@ from marker.models import create_model_dict
 from marker.output import text_from_rendered
 from marker.settings import settings
 
-# Cargar modelos una sola vez al arrancar el worker (evita cold start por request).
-print("Cargando modelos de Marker...")
-MODELS = create_model_dict()
-print("Modelos de Marker listos.")
+_models = None
+_models_lock = threading.Lock()
+
+
+def _get_models():
+    """Carga modelos bajo demanda para que el worker registre ping antes."""
+    global _models
+    if _models is None:
+        with _models_lock:
+            if _models is None:
+                print("Cargando modelos de Marker...")
+                _models = create_model_dict()
+                print("Modelos de Marker listos.")
+    return _models
 
 
 def _decode_pdf(job_input: dict[str, Any]) -> tuple[str, str]:
@@ -94,7 +105,7 @@ def handler(job: dict) -> dict:
 
         converter = PdfConverter(
             config=config_dict,
-            artifact_dict=MODELS,
+            artifact_dict=_get_models(),
             processor_list=config_parser.get_processors(),
             renderer=config_parser.get_renderer(),
             llm_service=config_parser.get_llm_service(),
