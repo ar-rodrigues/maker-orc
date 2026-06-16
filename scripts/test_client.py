@@ -24,6 +24,11 @@ def main() -> None:
     )
     parser.add_argument("--page-range", default=None)
     parser.add_argument("--force-ocr", action="store_true")
+    parser.add_argument(
+        "--use-llm",
+        action="store_true",
+        help="Activar post-proceso con Gemini (requiere GOOGLE_API_KEY en RunPod)",
+    )
     args = parser.parse_args()
 
     if not args.api_key:
@@ -44,6 +49,8 @@ def main() -> None:
         payload["input"]["page_range"] = args.page_range
     if args.force_ocr:
         payload["input"]["force_ocr"] = True
+    if args.use_llm:
+        payload["input"]["use_llm"] = True
 
     url = f"https://api.runpod.ai/v2/{args.endpoint_id}/runsync"
     headers = {

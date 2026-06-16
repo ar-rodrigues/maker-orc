@@ -3,6 +3,7 @@
     "pdf_url": "https://arxiv.org/pdf/2101.03961.pdf",
     "filename": "switch_transformers.pdf",
     "output_format": "markdown",
-    "page_range": "0-1"
+    "page_range": "0-1",
+    "use_llm": false
   }
 }

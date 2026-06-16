@@ -12,6 +12,8 @@ Entrada esperada (job["input"]):
   - include_images: bool (default: false) — incluir imágenes extraídas en base64 en la respuesta
   - disable_image_extraction: bool — no extraer imágenes (más rápido; anula include_images)
   - paginate_output: bool (default: false)
+  - use_llm: bool — post-proceso con Gemini (requiere GOOGLE_API_KEY en el worker)
+  - llm_service: str (opcional) — clase LLM de Marker; default GoogleGeminiService
 """
 
 from __future__ import annotations
@@ -33,6 +35,19 @@ _models_lock = threading.Lock()
 # RunPod limita el body de /run a ~10 MiB; archivos mayores deben usar pdf_url.
 PDF_URL_TIMEOUT_S = int(os.environ.get("PDF_URL_TIMEOUT_S", "300"))
 PDFTEXT_CPU_WORKERS = int(os.environ.get("PDFTEXT_CPU_WORKERS", "4"))
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
+def _resolve_use_llm(job_input: dict[str, Any]) -> bool:
+    if "use_llm" in job_input:
+        return bool(job_input["use_llm"])
+    return _env_bool("USE_LLM", False)
 
 
 def _get_models():
@@ -109,6 +124,13 @@ def handler(job: dict) -> dict:
         disable_image_extraction = bool(
             job_input.get("disable_image_extraction", not include_images)
         )
+        use_llm = _resolve_use_llm(job_input)
+
+        if use_llm and not os.environ.get("GOOGLE_API_KEY", "").strip():
+            raise ValueError(
+                "use_llm está activo pero falta GOOGLE_API_KEY en las variables "
+                "de entorno del worker (RunPod → Environment Variables)."
+            )
 
         options = {
             "filepath": tmp_path,
@@ -118,7 +140,13 @@ def handler(job: dict) -> dict:
             "strip_existing_ocr": bool(job_input.get("strip_existing_ocr", False)),
             "paginate_output": bool(job_input.get("paginate_output", False)),
             "disable_image_extraction": disable_image_extraction,
+            "use_llm": use_llm,
         }
+        if job_input.get("llm_service"):
+            options["llm_service"] = job_input["llm_service"]
+
+        if use_llm:
+            print("Modo LLM activo (Gemini).", flush=True)
 
         config_parser = ConfigParser(options)
         config_dict = config_parser.generate_config_dict()
@@ -142,6 +170,7 @@ def handler(job: dict) -> dict:
             "status": "success",
             "filename": filename,
             "format": output_format,
+            "use_llm": use_llm,
             "output": text,
             "metadata": rendered.metadata,
         }

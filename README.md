@@ -31,6 +31,8 @@ docker push tu-usuario/marker-runpod:latest
 4. **Container Disk**: 20 GB
 5. Variables de entorno (opcional):
    - `TORCH_DEVICE=cuda`
+   - `GOOGLE_API_KEY` — clave de Gemini; necesaria si usas `use_llm`
+   - `USE_LLM=true` — activa LLM por defecto en todos los jobs (opcional)
 
 ### 3. Probar localmente (antes de desplegar)
 
@@ -65,10 +67,13 @@ curl -X POST "https://api.runpod.ai/v2/TU_ENDPOINT_ID/runsync" \
     "output_format": "markdown",
     "page_range": "0,5-10",
     "force_ocr": false,
+    "use_llm": false,
     "paginate_output": false
   }
 }
 ```
+
+`use_llm: true` mejora tablas, formularios y regiones complejas vía **Google Gemini**. Requiere `GOOGLE_API_KEY` en las variables del endpoint RunPod. Aumenta latencia y costo por documento; útil con `force_ocr` en PDFs escaneados.
 
 Alternativa: usar `"pdf_url"` en lugar de `pdf_base64` (URL pública).
 
