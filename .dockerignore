@@ -1,0 +1,6 @@
+.git
+.gitignore
+README.md
+scripts/
+test_input.json
+*.md

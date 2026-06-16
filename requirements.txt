@@ -1,0 +1,2 @@
+runpod~=1.7.9
+marker-pdf==1.10.2
