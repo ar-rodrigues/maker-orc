@@ -7,7 +7,10 @@ Entrada esperada (job["input"]):
   - filename: nombre del archivo (opcional, default: document.pdf)
   - output_format: markdown | json | html | chunks (default: markdown)
   - page_range: rango de páginas, ej. "0,5-10,20"
-  - force_ocr: bool (default: false)
+  - force_ocr: bool — OCR en todo el documento (recomendado para escaneos con capa de texto basura)
+  - strip_existing_ocr: bool — quita OCR embebido y re-OCR con surya
+  - include_images: bool (default: false) — incluir imágenes extraídas en base64 en la respuesta
+  - disable_image_extraction: bool — no extraer imágenes (más rápido; anula include_images)
   - paginate_output: bool (default: false)
 """
 
@@ -26,6 +29,10 @@ import runpod
 
 _models = None
 _models_lock = threading.Lock()
+
+# RunPod limita el body de /run a ~10 MiB; archivos mayores deben usar pdf_url.
+PDF_URL_TIMEOUT_S = int(os.environ.get("PDF_URL_TIMEOUT_S", "300"))
+PDFTEXT_CPU_WORKERS = int(os.environ.get("PDFTEXT_CPU_WORKERS", "4"))
 
 
 def _get_models():
@@ -54,7 +61,11 @@ def _decode_pdf(job_input: dict[str, Any]) -> tuple[str, str]:
     if pdf_base64:
         pdf_bytes = base64.b64decode(pdf_base64)
     elif pdf_url:
-        with urllib.request.urlopen(pdf_url, timeout=120) as response:
+        request = urllib.request.Request(
+            pdf_url,
+            headers={"User-Agent": "maker-orc/1.0 (RunPod Marker worker)"},
+        )
+        with urllib.request.urlopen(request, timeout=PDF_URL_TIMEOUT_S) as response:
             pdf_bytes = response.read()
     else:
         raise ValueError("Se requiere 'pdf_base64' o 'pdf_url' en el input.")
@@ -94,17 +105,27 @@ def handler(job: dict) -> dict:
 
         tmp_path, filename = _decode_pdf(job_input)
 
+        include_images = bool(job_input.get("include_images", False))
+        disable_image_extraction = bool(
+            job_input.get("disable_image_extraction", not include_images)
+        )
+
         options = {
             "filepath": tmp_path,
             "output_format": output_format,
             "page_range": job_input.get("page_range"),
             "force_ocr": bool(job_input.get("force_ocr", False)),
+            "strip_existing_ocr": bool(job_input.get("strip_existing_ocr", False)),
             "paginate_output": bool(job_input.get("paginate_output", False)),
+            "disable_image_extraction": disable_image_extraction,
         }
 
         config_parser = ConfigParser(options)
         config_dict = config_parser.generate_config_dict()
-        config_dict["pdftext_workers"] = 1
+        config_dict["pdftext_workers"] = int(
+            job_input.get("pdftext_workers", PDFTEXT_CPU_WORKERS)
+        )
+        config_dict["disable_tqdm"] = True
 
         converter = PdfConverter(
             config=config_dict,
@@ -117,14 +138,16 @@ def handler(job: dict) -> dict:
         rendered = converter(tmp_path)
         text, _, images = text_from_rendered(rendered)
 
-        return {
+        result = {
             "status": "success",
             "filename": filename,
             "format": output_format,
             "output": text,
-            "images": _encode_images(images),
             "metadata": rendered.metadata,
         }
+        if include_images and not disable_image_extraction:
+            result["images"] = _encode_images(images)
+        return result
 
     except Exception as exc:
         traceback.print_exc()

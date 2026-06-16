@@ -1,6 +1,24 @@
+# Solo entra al contenedor lo que copia el Dockerfile:
+# handler.py, requirements.txt, constraints.txt
+
+# Herramientas locales (no son el worker)
+scripts/
+
+# Datos y pruebas
+test-files/
+test/
+tests/
+test_input.json
+
+# Resultados de benchmark
+benchmark-results.json
+benchmark-run.log
+
+# Repo / docs
 .git
 .gitignore
+.github/
 README.md
-scripts/
-test_input.json
 *.md
+.env
+.env.*

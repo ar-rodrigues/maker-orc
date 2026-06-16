@@ -6,3 +6,9 @@ __pycache__/
 venv/
 salida.*
 uploads/
+test-files/
+test/
+tests/
+test_input.json
+benchmark-results.json
+benchmark-run.log

@@ -6,6 +6,13 @@ ENV PYTHONUNBUFFERED=1
 ENV TORCH_DEVICE=cuda
 ENV HF_HOME=/app/.cache/huggingface
 ENV TRANSFORMERS_CACHE=/app/.cache/huggingface
+# Paralelismo CPU para pdftext (ajustar según vCPU del pod; 4 suele ir bien en 24GB GPU).
+ENV PDFTEXT_CPU_WORKERS=4
+ENV OMP_NUM_THREADS=4
+ENV OPENBLAS_NUM_THREADS=4
+# Opcional: descomentar si la VRAM lo permite y quieres más velocidad en OCR.
+# ENV RECOGNITION_MODEL_QUANTIZE=true
+# ENV COMPILE_ALL=true
 
 RUN mkdir -p /app/.cache/huggingface
 
