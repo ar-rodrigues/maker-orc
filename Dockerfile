@@ -10,8 +10,9 @@ ENV TRANSFORMERS_CACHE=/app/.cache/huggingface
 RUN mkdir -p /app/.cache/huggingface
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir --force-reinstall transformers==4.45.2
+# Reemplaza transformers del image base (a veces 5.x) por versión compatible con surya/marker.
+RUN pip uninstall -y transformers 2>/dev/null || true \
+    && pip install --no-cache-dir -r requirements.txt
 
 # Los modelos se cargan al arrancar el worker (handler.py), no en build.
 # Evita timeouts en el build de GitHub (CPU, límite ~30 min).
