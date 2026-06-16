@@ -1,0 +1,2 @@
+# Evitar que marker-pdf reemplace el torch/torchvision del image base.
+torch>=2.7.0,<2.8.0
